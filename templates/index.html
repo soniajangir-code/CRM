@@ -345,12 +345,9 @@
     <div class="glowing-orb orb-right"></div>
 
     <div class="container">
-        <header style="position: relative;">
+        <header>
             <h1>CRM Leads Gate & Scraper</h1>
             <p>Automated multi-platform scrapers & Google Sheets syncing engine</p>
-            <a href="/logout" style="position: absolute; right: 0; top: 10px; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem; font-weight: 500; background: rgba(239, 68, 68, 0.05); transition: all 0.3s ease;">
-                Logout
-            </a>
         </header>
 
         <!-- Notification Bar -->
@@ -440,23 +437,32 @@
                 </div>
 
                 <!-- Export / Download Section -->
-                <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
                     <div class="card-title" style="color: #60a5fa; margin-bottom: 0.25rem;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                        Export Master Dataset
+                        Export Master Dataset (Anti-Duplicate)
                     </div>
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.4;">
-                        Download leads without duplicates (filters out already imported items) or retrieve the full archive.
+                        Select how you want to download your leads to prevent duplicate imports inside your CRM:
                     </p>
                     <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <a href="/api/download-new" class="btn btn-primary" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; text-decoration: none; text-align: center; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                            Download New Leads (Anti-Duplicate)
+                        <!-- Primary Option: New Leads Only -->
+                        <a href="/api/download?filter=new" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; text-align: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);" title="Downloads only leads that you haven't exported yet. Highly recommended to prevent CRM duplicates.">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                            Download UNEXPORTED Leads (New Only)
                         </a>
-                        <a href="/api/download" class="btn btn-primary" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); text-decoration: none; text-align: center;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                            Download Master CSV (Full History)
-                        </a>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <!-- Secondary Option: Today's Leads -->
+                            <a href="/api/download?filter=today" class="btn btn-primary" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; text-decoration: none; text-align: center; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.15); font-size: 0.85rem; padding: 0.6rem 0.5rem;" title="Downloads only leads scraped on today's date.">
+                                Today's Leads Only
+                            </a>
+                            
+                            <!-- Tertiary Option: All Leads -->
+                            <a href="/api/download?filter=all" class="btn btn-primary" style="background: linear-gradient(135deg, #4b5563 0%, #374151 100%); color: white; text-decoration: none; text-align: center; box-shadow: 0 4px 10px rgba(75, 85, 99, 0.15); font-size: 0.85rem; padding: 0.6rem 0.5rem;" title="Downloads the entire master dataset.">
+                                Download All Leads
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

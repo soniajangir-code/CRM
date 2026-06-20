@@ -177,7 +177,7 @@ def scrape_justdial_via_google(page, department, location):
         
     return results
 
-def scrape_directory(source, department, location, max_results=30, headless=False):
+def scrape_directory(source, department, location, max_results=30):
     """
     Scrapes JustDial, Trade India, or IndiaMart for a given department and location.
     """
@@ -208,7 +208,7 @@ def scrape_directory(source, department, location, max_results=30, headless=Fals
     print("[Directory Scraper] Note: Browser is running in HEADED mode. If you see a CAPTCHA or 'Verify you are human' screen, please complete it to let the scraper proceed.")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=headless)
+        browser = p.chromium.launch(headless=False)
         context = browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"

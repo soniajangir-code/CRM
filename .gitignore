@@ -1,19 +1,22 @@
-# Databases and personal client data
-master_dataset.csv
-downloaded_phones.json
-input_csv/
-
-# Private configuration URLs
-config_json.json
-config.json
-
-# Python caching and environment files
+# Python cache files
 __pycache__/
 scrapers/__pycache__/
-venv/
-.venv
 *.pyc
 *.pyo
 *.pyd
-.pytest_cache/
-.DS_Store
+
+# Private database and lead files (DO NOT push your lead data to GitHub)
+master_dataset.csv
+exported_phones.json
+input_csv/
+*.png
+
+# Private configurations (DO NOT push your private Google Sheets URL)
+config.json
+
+# Environment and IDE settings
+.vscode/
+.idea/
+.env
+venv/
+env/

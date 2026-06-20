@@ -52,7 +52,7 @@ def extract_emails(text):
     emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
     return list(set(emails))
 
-def scrape_hospitals(department, location, max_results=10, headless=False):
+def scrape_hospitals(department, location, max_results=10):
     """
     Discovers hospital websites in the location via Google Search and crawls their contact info.
     """
@@ -72,7 +72,7 @@ def scrape_hospitals(department, location, max_results=10, headless=False):
     ]
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=headless)
+        browser = p.chromium.launch(headless=False)
         context = browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"

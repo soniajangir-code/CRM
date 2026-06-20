@@ -25,7 +25,7 @@ def clean_text(text):
     return text.strip()
 
 
-def scrape_google_maps(department, location, max_results=30, headless=False):
+def scrape_google_maps(department, location, max_results=30):
     """
     Scrapes Google Maps for a given department and location.
     Returns a list of dictionaries with standard CRM fields.
@@ -37,8 +37,9 @@ def scrape_google_maps(department, location, max_results=30, headless=False):
     results = []
 
     with sync_playwright() as p:
-        # Launch browser. Headless mode can be toggled via config.json
-        browser = p.chromium.launch(headless=headless)
+        # Launch browser. Using headless=False is helpful for visual debugging
+        # and bypassing basic bot detection.
+        browser = p.chromium.launch(headless=False)
         context = browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"

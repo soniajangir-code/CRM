@@ -8,10 +8,7 @@ import datetime
 import requests
 import csv
 import io
-import hashlib
-from pymongo import MongoClient
-from functools import wraps
-from flask import Flask, render_template, request, jsonify, Response, send_file, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, Response, send_file, make_response
 from werkzeug.utils import secure_filename
 
 # Import local scraper engines and gateway functions
@@ -21,46 +18,8 @@ from scrapers.hospital_scraper import scrape_hospitals
 from crm_gate import load_mapping_config, map_headers, deduplicate_and_save, clean_phone
 
 app = Flask(__name__)
-app.secret_key = 'crm-leads-gate-secret-key-12345'
 app.config['UPLOAD_FOLDER'] = 'input_csv'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB limit
-
-# MongoDB Connection
-MONGO_URI = "mongodb+srv://livelong:9680796461@cluster0.2xwtrmi.mongodb.net/healthcare_app?retryWrites=true&w=majority&appName=Cluster0"
-try:
-    # Connect to MongoDB cluster using dnspython and pymongo
-    mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000, tlsAllowInvalidCertificates=True)
-    db = mongo_client["healthcare_app"]
-    users_col = db["users"]
-    # Test connection
-    mongo_client.server_info()
-    print("[MongoDB] Connected successfully to Cluster0: healthcare_app database.")
-    
-    # Auto-initialize default user if not exists
-    if users_col.count_documents({"email": "yeshsharma123@gmail.com"}) == 0:
-        default_pwd_hash = hashlib.sha256(b"123456").hexdigest()
-        users_col.insert_one({
-            "email": "yeshsharma123@gmail.com",
-            "password": default_pwd_hash,
-            "created_at": datetime.datetime.now()
-        })
-        print("[MongoDB] Registered default user: yeshsharma123@gmail.com / 123456")
-except Exception as e:
-    print(f"[MongoDB] Connection failed: {e}")
-    db = None
-    users_col = None
-
-# Default credentials fallback
-ADMIN_EMAIL = "yeshsharma123@gmail.com"
-ADMIN_PASSWORD = "123456"
-
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('logged_in'):
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 # Create upload folder if not exists
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -116,25 +75,15 @@ def run_scraper_thread(source, department, location, gsheet_url):
     sys.stdout = capture
     
     try:
-        # Load headless configuration from config.json
-        config_path = 'config.json'
-        headless = False
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r') as f:
-                    headless = json.load(f).get('headless', False)
-            except Exception:
-                pass
-                
-        print(f"[Scraper Thread] Initiating automated search: '{department}' in '{location}' from '{source}' (Headless: {headless})...")
+        print(f"[Scraper Thread] Initiating automated search: '{department}' in '{location}' from '{source}'...")
         
         new_records = []
         if source == "Google Maps":
-            new_records = scrape_google_maps(department, location, headless=headless)
+            new_records = scrape_google_maps(department, location)
         elif source in ["JustDial", "Trade India", "IndiaMart"]:
-            new_records = scrape_directory(source, department, location, headless=headless)
+            new_records = scrape_directory(source, department, location)
         elif source == "Hospital Websites":
-            new_records = scrape_hospitals(department, location, headless=headless)
+            new_records = scrape_hospitals(department, location)
         
         if new_records:
             print(f"[Scraper Thread] Extraction complete. Scraped {len(new_records)} records.")
@@ -161,48 +110,11 @@ def run_scraper_thread(source, department, location, gsheet_url):
         # Signal to log stream that the thread is finished
         log_queue.put("=== SCRAPE JOB COMPLETED ===")
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    error = None
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')
-        
-        pwd_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
-        
-        authenticated = False
-        if users_col is not None:
-            try:
-                user = users_col.find_one({"email": email})
-                if user and user.get("password") == pwd_hash:
-                    authenticated = True
-            except Exception as e:
-                print(f"[MongoDB] Error checking credentials: {e}")
-                
-        # Fallback to local hardcoded check if DB is down
-        if not authenticated and users_col is None:
-            if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
-                authenticated = True
-                
-        if authenticated:
-            session['logged_in'] = True
-            return redirect(url_for('index'))
-        else:
-            error = "Invalid email or password. Please try again."
-    return render_template('login.html', error=error)
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
 @app.route('/')
-@login_required
 def index():
     return render_template('index.html')
 
 @app.route('/api/config', methods=['GET', 'POST'])
-@login_required
 def config():
     config_path = 'config.json'
     
@@ -225,7 +137,6 @@ def config():
     return jsonify(cfg)
 
 @app.route('/api/scrape', methods=['POST'])
-@login_required
 def scrape():
     data = request.json or {}
     source = data.get('source')
@@ -253,7 +164,6 @@ def scrape():
     return jsonify({"status": "success", "message": "Scraper job started."})
 
 @app.route('/api/upload', methods=['POST'])
-@login_required
 def upload_file():
     if 'file' not in request.files:
         return jsonify({"status": "error", "message": "No file uploaded."}), 400
@@ -336,79 +246,70 @@ def upload_file():
     return jsonify({"status": "error", "message": "Invalid file type. Please upload a CSV file."}), 400
 
 @app.route('/api/download')
-@login_required
 def download_csv():
+    filter_type = request.args.get('filter', 'all')
     master_file = "master_dataset.csv"
-    if os.path.exists(master_file):
-        return send_file(master_file, as_attachment=True, download_name="master_dataset.csv", mimetype="text/csv")
-    else:
-        return "Master dataset CSV file does not exist yet. Run a scrape campaign or upload a CSV first.", 404
-
-@app.route('/api/download-new')
-@login_required
-def download_new_csv():
-    master_file = "master_dataset.csv"
-    downloaded_file = "downloaded_phones.json"
     
     if not os.path.exists(master_file):
-        return "No leads found in database. Run a scrape campaign or upload a CSV first.", 404
+        return "Master dataset CSV file does not exist yet. Run a scrape campaign or upload a CSV first.", 404
         
-    downloaded_phones = set()
-    if os.path.exists(downloaded_file):
-        try:
-            with open(downloaded_file, "r") as f:
-                downloaded_phones = set(json.load(f))
-        except Exception:
-            pass
-            
-    new_rows = []
-    headers = []
+    crm_fields = [
+        "Details Received", "Name", "Father's Name", "Phone", 
+        "Email", "Address", "Hospital", "Specialization", "Class", "Data Source"
+    ]
     
-    try:
-        with open(master_file, "r", encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            headers = reader.fieldnames
-            if headers:
-                for row in reader:
-                    phone = clean_phone(row.get("Phone", ""))
-                    if phone and phone not in downloaded_phones:
-                        new_rows.append(row)
-    except Exception as e:
-        return f"Error reading master dataset: {e}", 500
+    rows = []
+    # Read files with utf-8-sig to preserve encoding/accents
+    with open(master_file, "r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames:
+            for row in reader:
+                rows.append(row)
+                
+    filtered_rows = []
+    
+    if filter_type == "today":
+        today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+        filtered_rows = [r for r in rows if r.get("Details Received") == today_str]
+    elif filter_type == "new":
+        # Load already exported phone numbers
+        exported_phones = set()
+        exported_file = "exported_phones.json"
+        if os.path.exists(exported_file):
+            with open(exported_file, "r") as f:
+                try:
+                    exported_phones = set(json.load(f))
+                except Exception:
+                    pass
+                    
+        # Filter rows
+        filtered_rows = [r for r in rows if r.get("Phone") not in exported_phones]
         
-    if not new_rows:
-        return "All leads have already been downloaded! No new leads found.", 400
+        # Save newly exported phone numbers to prevent future duplicate exports
+        newly_exported = [r.get("Phone") for r in filtered_rows if r.get("Phone")]
+        if newly_exported:
+            exported_phones.update(newly_exported)
+            with open(exported_file, "w") as f:
+                json.dump(list(exported_phones), f)
+    else:
+        filtered_rows = rows
         
+    if not filtered_rows:
+        return "No records match the selected filter (either no new leads or no leads scraped today).", 400
+        
+    # Generate CSV in memory
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=headers)
+    writer = csv.DictWriter(output, fieldnames=crm_fields)
     writer.writeheader()
-    writer.writerows(new_rows)
+    writer.writerows(filtered_rows)
     
-    for row in new_rows:
-        phone = clean_phone(row.get("Phone", ""))
-        if phone:
-            downloaded_phones.add(phone)
-            
-    try:
-        with open(downloaded_file, "w") as f:
-            json.dump(list(downloaded_phones), f, indent=2)
-    except Exception as e:
-        print(f"[CRM Gate] Warning: Could not update downloaded_phones.json: {e}")
-        
-    mem = io.BytesIO()
-    mem.write(output.getvalue().encode('utf-8'))
-    mem.seek(0)
-    output.close()
-    
-    return send_file(
-        mem, 
-        as_attachment=True, 
-        download_name=f"new_leads_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", 
-        mimetype="text/csv"
-    )
+    response = make_response(output.getvalue())
+    filename = f"leads_{filter_type}_{datetime.datetime.now().strftime('%Y%m%d')}.csv"
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    response.headers["Content-type"] = "text/csv"
+    return response
 
 @app.route('/api/stream')
-@login_required
 def stream_logs():
     """
     SSE Endpoint to stream stdout logs to the browser.
