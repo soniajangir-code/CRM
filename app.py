@@ -29,7 +29,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB limit
 MONGO_URI = "mongodb+srv://livelong:9680796461@cluster0.2xwtrmi.mongodb.net/healthcare_app?retryWrites=true&w=majority&appName=Cluster0"
 try:
     # Connect to MongoDB cluster using dnspython and pymongo
-    mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000, tlsAllowInvalidCertificates=True)
     db = mongo_client["healthcare_app"]
     users_col = db["users"]
     # Test connection
