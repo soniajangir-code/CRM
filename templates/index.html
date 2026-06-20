@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Leads Gate & Scraper Hub</title>
+    <!-- Google Fonts: Outfit (modern sans) and JetBrains Mono (monospaced for logs) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(17, 25, 40, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary-glow: #3b82f6;
+            --accent-glow: #8b5cf6;
+            --success-glow: #10b981;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --terminal-bg: #05070c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 2rem 1rem;
+            position: relative;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+        }
+
+        /* Decorative glowing orbs */
+        .glowing-orb {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .orb-left {
+            top: -100px;
+            left: -100px;
+            background: var(--primary-glow);
+        }
+        .orb-right {
+            bottom: -100px;
+            right: -100px;
+            background: var(--accent-glow);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            z-index: 10;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        /* Glassmorphic Cards */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.05);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #60a5fa;
+        }
+
+        /* Forms styling */
+        .form-group {
+            margin-bottom: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease, background 0.3s ease;
+        }
+
+        input[type="text"]:focus, select:focus {
+            border-color: var(--primary-glow);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Custom buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3), 0 0 10px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Drag and Drop Uploader */
+        .upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 2.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.02);
+            position: relative;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--accent-glow);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .upload-area svg {
+            width: 40px;
+            height: 40px;
+            fill: none;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            margin-bottom: 1rem;
+            transition: stroke 0.3s ease;
+        }
+
+        .upload-area:hover svg {
+            stroke: var(--accent-glow);
+        }
+
+        .upload-area p {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .upload-area input {
+            display: none;
+        }
+
+        /* Console Terminal UI */
+        .terminal-container {
+            grid-column: span 2;
+        }
+
+        @media (max-width: 768px) {
+            .terminal-container {
+                grid-column: span 1;
+            }
+        }
+
+        .terminal {
+            background-color: var(--terminal-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.25rem;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: #38bdf8;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+
+        .terminal::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .terminal-line {
+            line-height: 1.5;
+            margin-bottom: 0.25rem;
+            white-space: pre-wrap;
+        }
+
+        .terminal-line.success {
+            color: #10b981;
+        }
+
+        .terminal-line.error {
+            color: #ef4444;
+        }
+
+        .terminal-line.system {
+            color: #a78bfa;
+        }
+
+        /* Custom notifications */
+        .notification {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.25rem;
+            font-size: 0.95rem;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .notification-success {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+        }
+
+        .notification-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pulse-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success-glow);
+            box-shadow: 0 0 8px var(--success-glow);
+            animation: pulse 1.5s infinite;
+            margin-left: 0.5rem;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="glowing-orb orb-left"></div>
+    <div class="glowing-orb orb-right"></div>
+
+    <div class="container">
+        <header style="position: relative;">
+            <h1>CRM Leads Gate & Scraper</h1>
+            <p>Automated multi-platform scrapers & Google Sheets syncing engine</p>
+            <a href="/logout" style="position: absolute; right: 0; top: 10px; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem; font-weight: 500; background: rgba(239, 68, 68, 0.05); transition: all 0.3s ease;">
+                Logout
+            </a>
+        </header>
+
+        <!-- Notification Bar -->
+        <div id="notify" class="notification"></div>
+
+        <div class="dashboard-grid">
+            
+            <!-- Left Card: Scraper Settings & Run -->
+            <div class="glass-card">
+                <div class="card-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Scraping Campaign Configuration
+                </div>
+                
+                <form id="scrapeForm">
+                    <div class="form-group">
+                        <label for="department">Target Specialization / Department</label>
+                        <input type="text" id="department" placeholder="e.g., Dentist, Cardiologist, Orthopedic" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location">Target Location / City</label>
+                        <input type="text" id="location" placeholder="e.g., Mumbai, Delhi, Noida" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="source">Data Source</label>
+                        <select id="source">
+                            <option value="Google Maps">Google Maps (Auto browser scroll + click)</option>
+                            <option value="JustDial">JustDial (URL routing + Google fallback)</option>
+                            <option value="Trade India">Trade India (B2B portal listing)</option>
+                            <option value="IndiaMart">IndiaMart (Seller directory)</option>
+                            <option value="Hospital Websites">Hospital Websites (Google Discovery & Crawler)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" id="runBtn" class="btn btn-primary" style="margin-top: 1rem;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Launch Automated Scraper
+                    </button>
+                </form>
+            </div>
+
+            <!-- Right Card: GSheets Configuration & Manual Upload -->
+            <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- GSheet Config Section -->
+                <div>
+                    <div class="card-title" style="color: #a78bfa;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 3v18M4 9h18M4 15h18"/></svg>
+                        Google Sheet Endpoint Configuration
+                    </div>
+                    <div class="form-group">
+                        <label for="gsheetUrl">Apps Script Web App URL</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" id="gsheetUrl" placeholder="https://script.google.com/macros/s/.../exec">
+                            <button id="saveGsheetBtn" class="btn btn-primary" style="width: auto; padding: 0.75rem 1.25rem;">Save</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CSV Upload Section -->
+                <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1.5rem;">
+                    <div class="card-title" style="color: #10b981; margin-bottom: 1rem;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                        Manual CSV Import (Instant Scraper)
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="uploadSource">Map Upload Headers as Source</label>
+                        <select id="uploadSource">
+                            <option value="Generic">Generic (Default CRM headers)</option>
+                            <option value="Google Maps">Google Maps</option>
+                            <option value="JustDial">JustDial</option>
+                            <option value="Trade India">Trade India</option>
+                            <option value="IndiaMart">IndiaMart</option>
+                            <option value="Hospital Websites">Hospital Websites</option>
+                        </select>
+                    </div>
+
+                    <div id="dropZone" class="upload-area">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                        <p>Drag & Drop your scraper CSV file here or <strong>Browse</strong></p>
+                        <input type="file" id="fileInput" accept=".csv">
+                    </div>
+                </div>
+
+                <!-- Export / Download Section -->
+                <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div class="card-title" style="color: #60a5fa; margin-bottom: 0.25rem;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Export Master Dataset
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.4;">
+                        Download leads without duplicates (filters out already imported items) or retrieve the full archive.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <a href="/api/download-new" class="btn btn-primary" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; text-decoration: none; text-align: center; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                            Download New Leads (Anti-Duplicate)
+                        </a>
+                        <a href="/api/download" class="btn btn-primary" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); text-decoration: none; text-align: center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                            Download Master CSV (Full History)
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Console Card: Log terminal output -->
+            <div class="glass-card terminal-container">
+                <div class="card-title" style="margin-bottom: 1rem; color: #38bdf8; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="display: flex; align-items: center; gap: 0.75rem;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                        Real-time Execution Console
+                    </span>
+                    <span id="statusIndicator" style="display: none; font-size: 0.85rem; color: var(--text-muted);">
+                        Scraping Active <span class="pulse-indicator"></span>
+                    </span>
+                </div>
+
+                <div id="terminal" class="terminal">
+                    <div class="terminal-line system">Waiting for process initialization... Ready.</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const gsheetUrlInput = document.getElementById('gsheetUrl');
+        const saveGsheetBtn = document.getElementById('saveGsheetBtn');
+        const scrapeForm = document.getElementById('scrapeForm');
+        const departmentInput = document.getElementById('department');
+        const locationInput = document.getElementById('location');
+        const sourceSelect = document.getElementById('source');
+        const runBtn = document.getElementById('runBtn');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadSourceSelect = document.getElementById('uploadSource');
+        const terminal = document.getElementById('terminal');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const notify = document.getElementById('notify');
+
+        let logEventSource = null;
+
+        // Load Saved Configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                if (config.gsheet_url) {
+                    gsheetUrlInput.value = config.gsheet_url;
+                }
+            } catch (err) {
+                console.error("Failed to load config:", err);
+            }
+        }
+        loadConfig();
+
+        // Save GSheet URL
+        saveGsheetBtn.addEventListener('click', async () => {
+            const gsheet_url = gsheetUrlInput.value.trim();
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gsheet_url })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showNotification("Google Sheet URL saved successfully!", "success");
+                }
+            } catch (err) {
+                showNotification("Failed to save Google Sheet URL.", "error");
+            }
+        });
+
+        // Run Scraper Submit
+        scrapeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const department = departmentInput.value.trim();
+            const location = locationInput.value.trim();
+            const source = sourceSelect.value;
+
+            // Clear Console
+            terminal.innerHTML = '<div class="terminal-line system">Initializing scraper thread...</div>';
+            statusIndicator.style.display = 'flex';
+            runBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source, department, location })
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    // Connect SSE Log Stream
+                    startLogStream();
+                } else {
+                    writeToTerminal(result.message, "error");
+                    runBtn.disabled = false;
+                    statusIndicator.style.display = 'none';
+                }
+            } catch (err) {
+                writeToTerminal("Failed to trigger scraper job.", "error");
+                runBtn.disabled = false;
+                statusIndicator.style.display = 'none';
+            }
+        });
+
+        // Log Streaming SSE
+        function startLogStream() {
+            if (logEventSource) {
+                logEventSource.close();
+            }
+
+            logEventSource = new EventSource('/api/stream');
+
+            logEventSource.onmessage = function(e) {
+                const message = e.data;
+                
+                if (message === "=== SCRAPE COMPLETED ===" || message === "=== SCRAPE JOB COMPLETED ===") {
+                    writeToTerminal("Scrape run completed. Cleaning and saving database file.", "system");
+                    statusIndicator.style.display = 'none';
+                    runBtn.disabled = false;
+                    logEventSource.close();
+                    showNotification("Scraping and Synchronization complete!", "success");
+                } else if (message.startsWith("[GSheet Sync] SUCCESS")) {
+                    writeToTerminal(message, "success");
+                } else if (message.includes("ERROR") || message.includes("Failed")) {
+                    writeToTerminal(message, "error");
+                } else {
+                    writeToTerminal(message);
+                }
+            };
+
+            logEventSource.onerror = function() {
+                writeToTerminal("Log stream connection interrupted. Scraper thread may still be running in background.", "system");
+                statusIndicator.style.display = 'none';
+                runBtn.disabled = false;
+                logEventSource.close();
+            };
+        }
+
+        // Write line to terminal
+        function writeToTerminal(text, type = "") {
+            const line = document.createElement('div');
+            line.className = 'terminal-line ' + type;
+            line.textContent = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Show Notification Banner
+        function showNotification(message, type) {
+            notify.textContent = message;
+            notify.className = `notification notification-${type}`;
+            notify.style.display = 'block';
+            setTimeout(() => {
+                notify.style.display = 'none';
+            }, 5000);
+        }
+
+        // Drag and Drop files
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        // Handle Manual CSV File Upload and sync
+        async function handleFileUpload(file) {
+            const source = uploadSourceSelect.value;
+            const department = departmentInput.value.trim() || "General";
+            const location = locationInput.value.trim() || "India";
+
+            writeToTerminal(`Uploading manual CSV: ${file.name} (Mapping: ${source})...`, "system");
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('source', source);
+            formData.append('department', department);
+            formData.append('location', location);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    writeToTerminal(result.message, "success");
+                    if (result.gsheet_synced) {
+                        writeToTerminal("SUCCESS: Synced CSV records to Google Sheet!", "success");
+                        showNotification("CSV Import & GSheet sync complete!", "success");
+                    } else {
+                        writeToTerminal("CSV saved locally in master_dataset.csv. GSheet upload was skipped (check Sheet URL).", "system");
+                        showNotification("CSV Import complete (Saved locally)!", "success");
+                    }
+                } else {
+                    writeToTerminal(`Upload Error: ${result.message}`, "error");
+                    showNotification(result.message, "error");
+                }
+            } catch (err) {
+                writeToTerminal("Network error uploading CSV file.", "error");
+                showNotification("Upload failed.", "error");
+            }
+        }
+    </script>
+</body>
+</html>

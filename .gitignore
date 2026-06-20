@@ -1,0 +1,19 @@
+# Databases and personal client data
+master_dataset.csv
+downloaded_phones.json
+input_csv/
+
+# Private configuration URLs
+config_json.json
+config.json
+
+# Python caching and environment files
+__pycache__/
+scrapers/__pycache__/
+venv/
+.venv
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.DS_Store

@@ -1,0 +1,37 @@
+{
+  "sources": {
+    "Google Maps": {
+      "Name": ["title", "name", "business name", "place name"],
+      "Phone": ["phone", "phone number", "tel", "contact", "mobile"],
+      "Email": ["email", "e-mail"],
+      "Address": ["address", "location", "street", "formatted_address"],
+      "Hospital": ["title", "name", "hospital"]
+    },
+    "JustDial": {
+      "Name": ["name", "company name", "title"],
+      "Phone": ["phone", "mobile", "contact"],
+      "Email": ["email", "e-mail"],
+      "Address": ["address", "location"],
+      "Hospital": ["name"]
+    },
+    "Trade India": {
+      "Name": ["company", "company name", "name"],
+      "Phone": ["mobile", "phone", "contact"],
+      "Email": ["email", "e-mail"],
+      "Address": ["address", "location"]
+    },
+    "IndiaMart": {
+      "Name": ["company name", "seller name", "name"],
+      "Phone": ["phone", "mobile", "contact"],
+      "Email": ["email"],
+      "Address": ["address", "location"]
+    },
+    "Hospital Websites": {
+      "Name": ["doctor name", "name", "title"],
+      "Phone": ["phone", "mobile", "contact"],
+      "Email": ["email", "e-mail"],
+      "Address": ["address", "hospital address"],
+      "Hospital": ["hospital name", "hospital", "clinic"]
+    }
+  }
+}
