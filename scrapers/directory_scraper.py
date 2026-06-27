@@ -208,7 +208,9 @@ def scrape_directory(source, department, location, max_results=30):
     print("[Directory Scraper] Note: Browser is running in HEADED mode. If you see a CAPTCHA or 'Verify you are human' screen, please complete it to let the scraper proceed.")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        import os
+        is_headless = os.environ.get("RENDER") == "true" or os.path.exists("/opt/render")
+        browser = p.chromium.launch(headless=is_headless)
         context = browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -248,7 +250,6 @@ def scrape_directory(source, department, location, max_results=30):
                 
             # Filter out results where phone number is empty before returning
             results = [r for r in results if r.get("Phone")]
-            results = results[:max_results]
             print(f"[Directory Scraper] Successfully extracted {len(results)} records from {source}.")
             
         except Exception as e:

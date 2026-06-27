@@ -72,7 +72,9 @@ def scrape_hospitals(department, location, max_results=10):
     ]
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        import os
+        is_headless = os.environ.get("RENDER") == "true" or os.path.exists("/opt/render")
+        browser = p.chromium.launch(headless=is_headless)
         context = browser.new_context(
             viewport={"width": 1280, "height": 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -104,7 +106,7 @@ def scrape_hospitals(department, location, max_results=10):
                         hospital_urls.append(domain_url)
                         
             # Limit the number of websites to crawl
-            target_urls = hospital_urls[:max_results]
+            target_urls = hospital_urls
             print(f"[Hospital Scraper] Discovered {len(target_urls)} hospital websites to crawl.")
             
             for i, url in enumerate(target_urls, 1):

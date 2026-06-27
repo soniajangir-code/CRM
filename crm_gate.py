@@ -3,6 +3,7 @@ import csv
 import json
 import re
 import datetime
+import requests
 # from scrapers.gmaps_scraper import clean_phone # Wait, we can just define clean_phone locally or import it
 
 # Define clean_phone locally to keep it robust and simple
@@ -69,46 +70,51 @@ def map_headers(row_dict, source_name, mappings, default_dept, default_loc):
 def deduplicate_and_save(new_records):
     """
     Consolidates new records with existing master records.
-    Filters out empty phones and deduplicates based on phone number,
-    keeping the record with the most complete information.
+    Saves the rich data to master_dataset_rich.json (Internal Master Schema)
+    and exports/generates master_dataset.csv (CRM Export Schema).
     """
-    master_file = "master_dataset.csv"
+    rich_file = "master_dataset_rich.json"
+    crm_file = "master_dataset.csv"
+    
     crm_fields = [
         "Details Received", "Name", "Father's Name", "Phone", 
         "Email", "Address", "Hospital", "Specialization", "Class", "Data Source"
     ]
     
-    existing_records = []
-    if os.path.exists(master_file):
-        with open(master_file, "r", encoding="utf-8-sig") as f:
+    existing_rich_records = {}
+    
+    # 1. Load existing records (prefer rich JSON first)
+    if os.path.exists(rich_file):
+        with open(rich_file, "r", encoding="utf-8") as f:
+            try:
+                data_list = json.load(f)
+                for rec in data_list:
+                    phone = clean_phone(rec.get("Phone", ""))
+                    if phone:
+                        existing_rich_records[phone] = rec
+            except Exception as e:
+                print(f"[CRM Gate] Warning: Failed to load rich JSON database: {e}")
+                
+    # 2. Migration: If JSON doesn't exist but CSV does, import the CSV
+    if not existing_rich_records and os.path.exists(crm_file):
+        print("[CRM Gate] Migrating existing master_dataset.csv leads to internal rich database...")
+        with open(crm_file, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
-            # Ensure the file actually has headers and data
             if reader.fieldnames:
                 for row in reader:
-                    # Clean and format phone for existing rows just in case
-                    row["Phone"] = clean_phone(row.get("Phone", ""))
-                    existing_records.append(row)
+                    phone = clean_phone(row.get("Phone", ""))
+                    if phone:
+                        existing_rich_records[phone] = dict(row)
 
-    print(f"[CRM Gate] Loaded {len(existing_records)} existing records from master dataset.")
+    print(f"[CRM Gate] Loaded {len(existing_rich_records)} existing records from master dataset.")
 
-    # Deduplication map
-    # Key: cleaned phone, Value: record dict
-    dedup_map = {}
-    
-    # Process existing records first
-    for rec in existing_records:
-        phone = rec["Phone"]
-        if not phone:
-            continue
-        dedup_map[phone] = rec
-        
-    # Process new records
     added_count = 0
     updated_count = 0
     skipped_empty_phone = 0
     
+    # 3. Process new records
     for rec in new_records:
-        phone = rec["Phone"]
+        phone = clean_phone(rec.get("Phone", ""))
         if not phone:
             skipped_empty_phone += 1
             continue
@@ -116,27 +122,62 @@ def deduplicate_and_save(new_records):
         # Count non-empty values to measure data richness
         non_empty_count = sum(1 for v in rec.values() if v)
         
-        if phone not in dedup_map:
-            dedup_map[phone] = rec
+        # Ensure standard keys exist in rec
+        name = rec.get("Name", rec.get("Business Name", ""))
+        address = rec.get("Address", "")
+        hospital = rec.get("Hospital", "")
+        email = rec.get("Email", "")
+        specialization = rec.get("Specialization", rec.get("Category", ""))
+        data_source = rec.get("Data Source", "")
+        details_received = rec.get("Details Received", datetime.datetime.now().strftime("%Y-%m-%d"))
+        
+        rec["Name"] = name
+        rec["Address"] = address
+        rec["Hospital"] = hospital
+        rec["Email"] = email
+        rec["Specialization"] = specialization
+        rec["Phone"] = phone
+        rec["Data Source"] = data_source
+        rec["Details Received"] = details_received
+        if "Father's Name" not in rec:
+            rec["Father's Name"] = rec.get("Father's Name", "")
+        if "Class" not in rec:
+            rec["Class"] = rec.get("Class", "")
+
+        if phone not in existing_rich_records:
+            existing_rich_records[phone] = rec
             added_count += 1
         else:
             # Compare richness of data
-            existing_rec = dedup_map[phone]
+            existing_rec = existing_rich_records[phone]
             existing_richness = sum(1 for v in existing_rec.values() if v)
             if non_empty_count > existing_richness:
-                dedup_map[phone] = rec
+                # Merge fields
+                merged = existing_rec.copy()
+                merged.update(rec)
+                existing_rich_records[phone] = merged
                 updated_count += 1
                 
-    # Save back to CSV
-    final_records = list(dedup_map.values())
-    
-    with open(master_file, "w", encoding="utf-8", newline="") as f:
+    # 4. Save consolidated rich records to master_dataset_rich.json
+    final_rich_list = list(existing_rich_records.values())
+    with open(rich_file, "w", encoding="utf-8") as f:
+        json.dump(final_rich_list, f, indent=2)
+        
+    # 5. Export CRM Schema to master_dataset.csv
+    final_crm_records = []
+    for rec in final_rich_list:
+        mapped_crm = {}
+        for field in crm_fields:
+            mapped_crm[field] = rec.get(field, "")
+        final_crm_records.append(mapped_crm)
+        
+    with open(crm_file, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=crm_fields)
         writer.writeheader()
-        writer.writerows(final_records)
+        writer.writerows(final_crm_records)
         
     print(f"\n[CRM Gate] Save complete:")
-    print(f"  - Total records in master dataset: {len(final_records)}")
+    print(f"  - Total records in master dataset: {len(final_rich_list)}")
     print(f"  - New unique records added: {added_count}")
     print(f"  - Existing records enriched: {updated_count}")
     print(f"  - Rows skipped due to empty phone: {skipped_empty_phone}")
@@ -273,3 +314,25 @@ if __name__ == "__main__":
     if not os.path.exists("input_csv"):
         os.makedirs("input_csv")
     main()
+
+def sync_to_gsheet(records, gsheet_url):
+    """
+    Sends records to the deployed Google Apps Script Web App URL.
+    """
+    if not gsheet_url:
+        print("[GSheet Sync] No Google Sheet URL configured. Skipping Google Sheet synchronization.")
+        return False
+        
+    print(f"[GSheet Sync] Connecting to Google Sheet endpoint...")
+    try:
+        # Apps Script expects a JSON array of record dicts
+        response = requests.post(gsheet_url, json=records, headers={"Content-Type": "application/json"}, timeout=15)
+        if response.status_code == 200:
+            print(f"[GSheet Sync] SUCCESS! Successfully sent {len(records)} records to your Google Sheet.")
+            return True
+        else:
+            print(f"[GSheet Sync] ERROR: Status code {response.status_code}. Response: {response.text}")
+            return False
+    except Exception as e:
+        print(f"[GSheet Sync] ERROR connecting to Google Sheet: {e}")
+        return False

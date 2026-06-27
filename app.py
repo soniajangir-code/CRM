@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 from scrapers.gmaps_scraper import scrape_google_maps
 from scrapers.directory_scraper import scrape_directory
 from scrapers.hospital_scraper import scrape_hospitals
-from crm_gate import load_mapping_config, map_headers, deduplicate_and_save, clean_phone
+from crm_gate import load_mapping_config, map_headers, deduplicate_and_save, clean_phone, sync_to_gsheet
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'input_csv'
@@ -43,27 +43,7 @@ class LogCapture:
     def flush(self):
         self.original_stdout.flush()
 
-def sync_to_gsheet(records, gsheet_url):
-    """
-    Sends records to the deployed Google Apps Script Web App URL.
-    """
-    if not gsheet_url:
-        print("[GSheet Sync] No Google Sheet URL configured. Skipping Google Sheet synchronization.")
-        return False
-        
-    print(f"[GSheet Sync] Connecting to Google Sheet endpoint...")
-    try:
-        # Apps Script expects a JSON array of record dicts
-        response = requests.post(gsheet_url, json=records, headers={"Content-Type": "application/json"}, timeout=15)
-        if response.status_code == 200:
-            print(f"[GSheet Sync] SUCCESS! Successfully sent {len(records)} records to your Google Sheet.")
-            return True
-        else:
-            print(f"[GSheet Sync] ERROR: Status code {response.status_code}. Response: {response.text}")
-            return False
-    except Exception as e:
-        print(f"[GSheet Sync] ERROR connecting to Google Sheet: {e}")
-        return False
+
 
 def run_scraper_thread(source, department, location, gsheet_url):
     """
