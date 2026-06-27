@@ -99,8 +99,8 @@ def config():
     config_path = 'config.json'
     
     # Load config
-    cfg = {"gsheet_url": ""}
-    if os.path.exists(config_path):
+    cfg = {"gsheet_url": os.environ.get("GSHEET_URL", "")}
+    if not cfg["gsheet_url"] and os.path.exists(config_path):
         with open(config_path, 'r') as f:
             try:
                 cfg = json.load(f)
@@ -128,8 +128,8 @@ def scrape():
         
     # Get the Google Sheet URL from config
     config_path = 'config.json'
-    gsheet_url = ""
-    if os.path.exists(config_path):
+    gsheet_url = os.environ.get("GSHEET_URL", "")
+    if not gsheet_url and os.path.exists(config_path):
         with open(config_path, 'r') as f:
             try:
                 gsheet_url = json.load(f).get('gsheet_url', '')
@@ -163,8 +163,8 @@ def upload_file():
         
         # Load config to get Google Sheet URL
         config_path = 'config.json'
-        gsheet_url = ""
-        if os.path.exists(config_path):
+        gsheet_url = os.environ.get("GSHEET_URL", "")
+        if not gsheet_url and os.path.exists(config_path):
             with open(config_path, 'r') as f:
                 try:
                     gsheet_url = json.load(f).get('gsheet_url', '')
